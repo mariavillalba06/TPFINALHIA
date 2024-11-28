@@ -1,0 +1,44 @@
+<div class="container mainLogin">
+    <div class="loginContainer">
+        <div>
+            <h2 class="text-center loginTitle">Bienvenido al hospital del Pilar</h2>
+        </div>
+        <form #formulario="ngForm" class="formLogin">
+
+            <div>
+                <label for="dni" class="form-label">DNI:</label>
+                <input type="text" id="dni" class="form-control" placeholder="ej. 41562685" aria-describedby="dni" name="dni" autocomplete="off"
+                [(ngModel)]="pacienteform.dni" required #dni="ngModel" minlength="7" >
+            </div>
+
+            <div *ngIf="dni.invalid && (dni.dirty || dni.touched)" class="alert alert-danger">
+
+                <div *ngIf="dni.errors?.['required']">
+                    Este campo es requerido
+                </div>
+                <div *ngIf="dni.errors?.['minlength']">
+                    Este campo debe tener al menos 7 caracteres
+                </div>
+
+            </div>
+
+            <div>
+                <label for="password" class="form-label">Contraseña:</label>
+                <input type="password" id="password" class="form-control" placeholder="ej. ••••••••••••••••" aria-describedby="password" name="password" autocomplete="off"
+                required #password="ngModel" [(ngModel)]="pacienteform.password">
+            </div>
+
+            <div *ngIf="password.invalid && (password.dirty || password.touched)" class="alert alert-danger">
+
+                <div *ngIf="password.errors?.['required']">
+                    Este campo es requerido
+                </div>
+
+            </div>
+
+        </form>
+
+        <button class="button" type="submit" id="btnSubmit" (click)="login()">Iniciar Sesión</button>
+        <p class="text-center">¿No tenés cuenta? <a [routerLink]="['/register']" routerLinkActive="active" class="formEnlace" (click)="agregar()">Registrarme</a></p>
+    </div>
+</div>
