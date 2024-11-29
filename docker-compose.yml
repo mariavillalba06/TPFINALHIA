@@ -29,10 +29,8 @@ services:
   mongo-primary:
     image: mongo:latest
     container_name: mongo-primary
-    #command: mongod --replSet rs0 --bind_ip_all
     ports:
       - "27017:27017"
-#    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "localhost,mongo-primary"]
     entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "0.0.0.0"]
     volumes:
       - mongo-primary-data:/data/db
@@ -44,9 +42,7 @@ services:
     container_name: mongo-secondary
     ports:
       - 27018:27017
-#    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "localhost,mongo-secondary"]
     entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "0.0.0.0"]
-    #command: mongod --replSet rs0 --bind_ip_all
     networks:
      - red-clinica
     volumes:
@@ -57,7 +53,6 @@ services:
     container_name: mongo-secondary2
     ports:
       - 27019:27017
-#    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "localhost,mongo-secondary2"]
     entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "0.0.0.0"]
     networks:
      - red-clinica
@@ -93,16 +88,7 @@ services:
       - mongo-primary
       - mongo-secondary
       - mongo-secondary2
-  
-#  mongo-backup:
-#    image: mongo:latest
-#    container_name: mongo-backup
-#    command: >
-#      bash -c "
-#        until mongosh --host mongo-primary:27017 --eval 'print(\"waiting for connection...\")'; do
-#          sleep 2;
-#        done &&
-#        mongodump --host mongo-primary:27017 --out /backup"
+         
   mongo-backup:
     build:
       context: .
@@ -116,38 +102,6 @@ services:
     depends_on:
       - mongo-primary
       - mongosetup
- 
-  mongo-exporter:
-    image: bitnami/mongodb-exporter:latest
-    container_name: mongo-exporter
-    environment:
-      MONGODB_URI: "mongodb://mongo-primary:27017,mongo-secondary:27017,mongo-secondary2:27017/final-project-db?replicaSet=rs0"
-    ports:
-      - "9216:9216"
-    networks:
-      - red-clinica
-    depends_on:
-      - mongo-primary
-      - mongo-secondary
-      - mongo-secondary2
-    #depends_on:
-    #  - mongo-primary
-     # - mongo-secondary
-      #- mongosetup
-  #mongo-exporter:
-  #  image: percona/mongodb_exporter:0.42.0
-  #  container_name: percona-mongo-exporter
-  #  command:
-  #    - --mongodb.uri=mongodb://exporter:securepassword@mongo-primary:27017,mongo-secondary:27017/?replicaSet=rs0
-  #    - --mongodb.global-conn-pool
-  #  ports:
-   #   - "9216:9216"
-  #  networks:
-   #   - red-clinica
-   # depends_on:
-    #  - mongo-primary
-     # - mongo-secondary
-     # - mongosetup
   
   node-exporter:
     image: prom/node-exporter:latest
@@ -194,6 +148,20 @@ services:
       - red-clinica
     depends_on:
       - prometheus
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower-container
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=10 
+    depends_on:
+      - backend   
+      - frontend
+    restart: always
+    networks:
+      - red-clinica
 
 networks:
   red-clinica:
