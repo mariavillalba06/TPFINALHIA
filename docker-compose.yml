@@ -1,0 +1,211 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./client/final-project  # Asegúrate de que esta ruta sea correcta
+      container_name: contenedor-frontend
+      image: mariavillalba/client-final-project2:latest
+    ports:
+      - "4200:4200"  # Asegúrate de mapear correctamente el puerto 4200
+    networks:
+      - red-clinica
+
+  backend:
+    build:
+      context: ./server
+      container_name: contenedor-backend
+      image: mariavillalba/server:latest
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongo-primary:27017,mongo-secondary:27017,mongo-secondary2:27017/final-project-db?replicaSet=rs0
+    depends_on:
+      - mongo-primary
+    networks:
+      - red-clinica
+    ports:
+      - "3000:3000"
+
+  mongo-primary:
+    image: mongo:latest
+    container_name: mongo-primary
+    #command: mongod --replSet rs0 --bind_ip_all
+    ports:
+      - "27017:27017"
+#    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "localhost,mongo-primary"]
+    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "0.0.0.0"]
+    volumes:
+      - mongo-primary-data:/data/db
+    networks:
+      - red-clinica
+  
+  mongo-secondary:
+    image: mongo:latest
+    container_name: mongo-secondary
+    ports:
+      - 27018:27017
+#    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "localhost,mongo-secondary"]
+    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "0.0.0.0"]
+    #command: mongod --replSet rs0 --bind_ip_all
+    networks:
+     - red-clinica
+    volumes:
+     - mongo-secondary-data:/data/db
+  
+  mongo-secondary2:
+    image: mongo:latest
+    container_name: mongo-secondary2
+    ports:
+      - 27019:27017
+#    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "localhost,mongo-secondary2"]
+    entrypoint: ["mongod", "--replSet", "rs0", "--bind_ip", "0.0.0.0"]
+    networks:
+     - red-clinica
+    volumes:
+     - mongo-secondary2-data:/data/db
+
+  mongosetup:
+    image: mongo:latest
+    depends_on:
+      - mongo-primary
+      - mongo-secondary
+      - mongo-secondary2
+    volumes:
+      - ./scripts:/scripts
+    restart: "no"
+    entrypoint: [ "bash", "/scripts/mongo_setup.sh" ]
+    networks:
+     - red-clinica
+  
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo-primary 
+      ME_CONFIG_MONGODB_REPLSET_NAME: rs0 
+      ME_CONFIG_BASICAUTH_USERNAME: admin 
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123 
+    ports:
+      - "8081:8081"
+    networks:
+      - red-clinica
+    depends_on:
+      - mongo-primary
+      - mongo-secondary
+      - mongo-secondary2
+  
+#  mongo-backup:
+#    image: mongo:latest
+#    container_name: mongo-backup
+#    command: >
+#      bash -c "
+#        until mongosh --host mongo-primary:27017 --eval 'print(\"waiting for connection...\")'; do
+#          sleep 2;
+#        done &&
+#        mongodump --host mongo-primary:27017 --out /backup"
+  mongo-backup:
+    build:
+      context: .
+      dockerfile: Dockerfile  # Ruta al Dockerfile personalizado
+    container_name: mongo-backup
+    volumes:
+      - mongo-backup-data:/backup
+#      - ./local-backups:/backup  # Persistencia local configurada
+    networks:
+      - red-clinica
+    depends_on:
+      - mongo-primary
+      - mongosetup
+ 
+  mongo-exporter:
+    image: bitnami/mongodb-exporter:latest
+    container_name: mongo-exporter
+    environment:
+      MONGODB_URI: "mongodb://mongo-primary:27017,mongo-secondary:27017,mongo-secondary2:27017/final-project-db?replicaSet=rs0"
+    ports:
+      - "9216:9216"
+    networks:
+      - red-clinica
+    depends_on:
+      - mongo-primary
+      - mongo-secondary
+      - mongo-secondary2
+    #depends_on:
+    #  - mongo-primary
+     # - mongo-secondary
+      #- mongosetup
+  #mongo-exporter:
+  #  image: percona/mongodb_exporter:0.42.0
+  #  container_name: percona-mongo-exporter
+  #  command:
+  #    - --mongodb.uri=mongodb://exporter:securepassword@mongo-primary:27017,mongo-secondary:27017/?replicaSet=rs0
+  #    - --mongodb.global-conn-pool
+  #  ports:
+   #   - "9216:9216"
+  #  networks:
+   #   - red-clinica
+   # depends_on:
+    #  - mongo-primary
+     # - mongo-secondary
+     # - mongosetup
+  
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - red-clinica
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - red-clinica
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - red-clinica
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - red-clinica
+    depends_on:
+      - prometheus
+
+networks:
+  red-clinica:
+
+volumes:
+  mongo-primary-data:
+    driver: local
+  mongo-secondary-data:
+    driver: local
+  mongo-secondary2-data:
+    driver: local
+  mongo-backup-data:
+    driver: local
+  grafana-data:
+    driver: local
