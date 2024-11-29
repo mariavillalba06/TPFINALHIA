@@ -155,7 +155,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - WATCHTOWER_POLL_INTERVAL=300  # Intervalo más seguro
+      - WATCHTOWER_POLL_INTERVAL=10  # Intervalo más seguro
     depends_on:
       - backend   
       - frontend
