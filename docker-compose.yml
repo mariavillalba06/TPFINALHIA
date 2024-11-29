@@ -3,7 +3,7 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: ./client/final-project  # Asegúrate de que esta ruta sea correcta
+#      context: ./client/final-project  # Asegúrate de que esta ruta sea correcta
       container_name: contenedor-frontend
       image: mariavillalba/client-final-project2:latest
     ports:
@@ -13,7 +13,7 @@ services:
 
   backend:
     build:
-      context: ./server
+#      context: ./server
       container_name: contenedor-backend
       image: mariavillalba/server:latest
     environment:
