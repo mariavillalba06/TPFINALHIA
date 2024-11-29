@@ -197,6 +197,7 @@ services:
 
 networks:
   red-clinica:
+    name: red-clinica
 
 volumes:
   mongo-primary-data:
